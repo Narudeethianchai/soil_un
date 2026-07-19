@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachable Machine Image Model (Perfect 3s)</title>
+    
+    <!-- สไตล์การตกแต่ง UI สวยงามและมีมิติ -->
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-background);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 450px;
+            width: 100%;
+        }
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 24px;
+            color: var(--text-main);
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background-color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #webcam-container {
+            margin: 20px auto;
+            border: 4px solid #e2e8f0;
+            border-radius: 12px;
+            width: 200px;
+            height: 200px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #edf2f7;
+        }
+
+        #webcam-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+        }
+
+        #label-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .prediction-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f1f5f9;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            border-left: 4px solid #cbd5e1;
+            transition: all 0.3s ease;
+        }
+
+        .class-name {
+            color: var(--text-main);
+        }
+
+        .probability {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Teachable Machine Image Model</h2>
+    <div class="subtitle">ระบบวิเคราะห์ภาพถ่าย (สแกนตรวจจับใหม่ทุก ๆ 3 วินาที)</div>
+    
+    <button type="button" id="start-btn" onclick="init()">เริ่มเปิดกล้องทำงาน</button>
+    
+    <div id="webcam-container"></div>
+    <div id="label-container">
+        <div class="prediction-row" style="justify-content: center;">
+            <span class="class-name" var="status">กดปุ่มด้านบนเพื่อเริ่มการทำงาน</span>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+<script type="text/javascript">
+    // ลิงก์โมเดลล่าสุดของคุณ
+    const URL = "https://teachablemachine.withgoogle.com/models/AZxNjDtyN/";[cite: 2]
+
+    let model, webcam, labelContainer, maxPredictions;
+    let lastPredictTime = 0;
+
+    async function init() {
+        const startBtn = document.getElementById("start-btn");
+        startBtn.disabled = true;
+        startBtn.innerText = "กำลังเชื่อมต่อโมเดล...";
+
+        try {
+            const modelURL = URL + "model.json";[cite: 2]
+            const metadataURL = URL + "metadata.json";[cite: 2]
+
+            // โหลดโมเดล[cite: 2]
+            model = await tmImage.load(modelURL, metadataURL);[cite: 2]
+            maxPredictions = model.getTotalClasses();[cite: 2]
+
+            // ตั้งค่ากล้อง[cite: 2]
+            const flip = true;[cite: 2]
+            webcam = new tmImage.Webcam(200, 200, flip);[cite: 2]
+            await webcam.setup();[cite: 2]
+            await webcam.play();[cite: 2]
+            
+            // แสดงภาพจากกล้องบนหน้าเว็บ[cite: 2]
+            document.getElementById("webcam-container").innerHTML = "";
+            document.getElementById("webcam-container").appendChild(webcam.canvas);[cite: 2]
+            
+            // ล้างหน้าจอเพื่อสร้างกล่องข้อความรอรับข้อมูลไว้ล่วงหน้า
+            labelContainer = document.getElementById("label-container");[cite: 2]
+            labelContainer.innerHTML = "";
+            
+            for (let i = 0; i < maxPredictions; i++) {[cite: 2]
+                const row = document.createElement("div");
+                row.className = "prediction-row";
+                
+                const nameSpan = document.createElement("span");
+                nameSpan.className = "class-name";
+                nameSpan.innerText = "กำลังคำนวณ...";
+                
+                const probSpan = document.createElement("span");
+                probSpan.className = "probability";
+                probSpan.innerText = "0%";
+                
+                row.appendChild(nameSpan);
+                row.appendChild(probSpan);
+                labelContainer.appendChild(row);[cite: 2]
+            }
+            
+            startBtn.innerText = "ระบบกล้องกำลังทำงาน";
+            
+            // สั่งทำการทำนายรอบแรกทันทีเพื่อให้หน้าจอมีข้อมูลแสดงผล
+            await predict();
+            lastPredictTime = Date.now();
+            
+            // เริ่ม Loop ขยับภาพของกล้อง
+            window.requestAnimationFrame(loop);[cite: 2]
+            
+        } catch (error) {
+            console.error(error);
+            startBtn.disabled = false;
+            startBtn.innerText = "เกิดข้อผิดพลาด ลองใหม่อีกครั้ง";
+            alert("ไม่สามารถโหลดโมเดลหรือเปิดกล้องได้ กรุณาตรวจสอบสิทธิ์การเข้าถึงกล้องถ่ายภาพ");
+        }
+    }
+
+    async function loop() {
+        if (webcam) {
+            webcam.update(); // อัปเดตวิดีโอกล้องให้เล่นสดลื่นไหลแบบ Real-time[cite: 2]
+            
+            // ใช้ระบบล็อกเวลา เพื่อเรียกฟังก์ชันประมวลผลคำตอบใหม่ในทุกๆ 3 วินาที (3000 มิลลิวินาที)
+            const currentTime = Date.now();
+            if (currentTime - lastPredictTime >= 3000) {
+                await predict();
+                lastPredictTime = currentTime;
+            }
+        }
+        window.requestAnimationFrame(loop);[cite: 2]
+    }
+
+    async function predict() {
+        if (!model || !webcam) return;
+        
+        // สั่งประมวลผลทำนายภาพจากแคนวาสกล้องปัจจุบัน[cite: 2]
+        const prediction = await model.predict(webcam.canvas);[cite: 2]
+        
+        // อัปเดตข้อมูลข้อความและตัวเลขเปอร์เซ็นต์ลงไปในแถวที่สร้างเตรียมไว้แล้วโดยตรง
+        for (let i = 0; i < maxPredictions; i++) {[cite: 2]
+            const className = prediction[i].className;[cite: 2]
+            const probabilityPercentage = (prediction[i].probability * 100).toFixed(0) + "%";
+            
+            const row = labelContainer.childNodes[i];
+            if (row) {
+                row.querySelector(".class-name").innerText = className;
+                row.querySelector(".probability").innerText = probabilityPercentage;
+                
+                // ไฮไลต์แถบเป็นสีม่วงเมื่อความน่าจะเป็นของคลาสนั้น ๆ มีค่าเกิน 50%
+                if (prediction[i].probability > 0.5) {
+                    row.style.borderLeft = "4px solid var(--primary-color)";
+                    row.style.backgroundColor = "#e0e7ff";
+                } else {
+                    row.style.borderLeft = "4px solid #cbd5e1";
+                    row.style.backgroundColor = "#f1f5f9";
+                }
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
